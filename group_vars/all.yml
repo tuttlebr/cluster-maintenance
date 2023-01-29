@@ -1,0 +1,17 @@
+admin_user: "brandon"
+
+allowed_ssh_networks:
+  - 192.168.1.0/24
+  - 10.10.10.0/24
+
+necessary_software:
+  - firewalld
+  
+unnecessary_software: []
+  
+unnecessary_services: []
+
+unnecessary_motd:
+  - /etc/update-motd.d/00-header
+  - /etc/update-motd.d/10-help-text
+  - /etc/update-motd.d/50-motd-news

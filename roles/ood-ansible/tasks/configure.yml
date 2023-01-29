@@ -1,0 +1,98 @@
+- name: template passenger locations ini file
+  template:
+    src: "locations.ini.j2"
+    dest: "{{ passenger_lib_dir }}/locations.ini"
+    mode: 'u=rw,g=r,o=r'
+  when: install_from_src
+
+- name: template apache file
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 'u=rw,g=r,o='
+  loop:
+  - { src: "ood-portal.conf.j2", dest: "{{ apache_conf_dir }}/ood-portal.conf" }
+  when: not ood_portal_generator
+  notify: restart apache httpd
+
+- name: template ood_portal.yml
+  template:
+    src: "ood_portal.yml.j2"
+    dest: "{{ ood_base_conf_dir }}/ood_portal.yml"
+    mode: 'u=rw,g=r,o='
+  notify: update ood portal
+
+- name: template nginx_stage.yml
+  template:
+    src: "nginx_stage.yml.j2"
+    dest: "{{ ood_base_conf_dir }}/nginx_stage.yml"
+    mode: 'u=rw,g=r,o=r'
+  notify: update nginx stage
+
+- name: make .d configuration directories
+  file:
+    path: "{{ item }}"
+    mode: 'u=rwx,g=rx,o=rx'
+    state: directory
+  loop:
+    - "{{ ood_base_conf_dir }}/clusters.d"
+    - "{{ ood_base_conf_dir }}/ondemand.d"
+
+- name: Add cluster configuration files
+  copy:
+    content: "{{ item.value | to_nice_yaml }}"
+    dest: "{{ ood_base_conf_dir }}/clusters.d/{{ item.key }}.yml"
+    mode: 'u=rw,g=r,o=r'
+  loop: "{{ clusters | default({}) | dict2items }}"
+  when: clusters is defined
+
+- name: template ondemand.yml
+  template:
+    src: "ondemand.yml.j2"
+    dest: "{{ ood_base_conf_dir }}/ondemand.d/ondemand.yml"
+    mode: 'u=rw,g=r,o=r'
+
+- name: enable Debian apache mods
+  file:
+    src: "{{ apache_etc_dir }}/mods-available/{{ item }}.load"
+    dest: "{{ apache_etc_dir }}/mods-enabled/{{ item }}.load"
+    state: link
+  when: ansible_os_family == "Debian"
+  loop:
+  - rewrite
+  - lua
+  - headers
+  - proxy
+  - proxy_http
+
+- name: enable Debian ssl mod
+  file:
+    src: "{{ apache_etc_dir }}/mods-available/ssl.load"
+    dest: "{{ apache_etc_dir }}/mods-enabled/ssl.load"
+    state: link
+  when: ansible_os_family == "Debian" and ssl is defined
+
+- name: enable Suse apache mods
+  blockinfile:
+    path: "{{ apache_etc_dir }}/loadmodule.conf"
+    block: |
+      LoadModule lua_module                     /usr/lib64/apache2-prefork/mod_lua.so
+      LoadModule headers_module                 /usr/lib64/apache2-prefork/mod_headers.so
+      LoadModule proxy_module                   /usr/lib64/apache2-prefork/mod_proxy.so
+      LoadModule proxy_http_module              /usr/lib64/apache2-prefork/mod_proxy_http.so
+  when: ansible_os_family == "Suse"
+
+- name: add OpenIDC config to Apache
+  template:
+    src: auth_openidc.conf.j2
+    dest: "{{ apache_conf_dir }}/auth_openidc.conf"
+    mode: 'u=rw,g=r,o='
+    group: "{{ apache_user }}"
+  when: ood_auth_openidc is defined
+  notify: restart apache httpd
+
+- name: start apache service
+  systemd:
+    name: "{{ apache_service_name }}"
+    state: started
+    enabled: "{{ apache_service_enabled }}"

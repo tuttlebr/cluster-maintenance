@@ -1,0 +1,11 @@
+[all]
+olympus-01     ansible_host=192.168.1.236
+olympus-02     ansible_host=192.168.1.234
+olympus-03     ansible_host=192.168.1.235
+
+[cpu]
+olympus-01
+
+[gpu]
+olympus-02
+olympus-03

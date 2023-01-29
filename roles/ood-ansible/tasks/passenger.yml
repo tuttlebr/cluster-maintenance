@@ -1,0 +1,104 @@
+- name: ensure passenger src and destination directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 'u=rwx,g=rx,o=rx'
+  become: true
+  loop:
+  - "{{ ood_base_dir }}"
+  - "{{ nginx_dir }}"
+  - "{{ nginx_dir }}/bin"
+  - "{{ nginx_dir }}/conf"
+  - "{{ passenger_lib_dir }}"
+  - "{{ passenger_support_binaries_dir }}"
+
+- name: init the passenger src directory
+  file:
+    path: "{{ passenger_src_dir }}"
+    mode: 'u=rwx,g=rx,o=rx'
+    state: directory
+
+- name: download the passenger tars
+  get_url:
+    url: "{{ item }}"
+    dest: "{{ passenger_src_dir }}"
+  when: passenger_remote_dl | bool
+  loop:
+  - "{{ passenger_url }}"
+  - "{{ passenger_nginx_url }}"
+  - "{{ passenger_agent_url }}"
+
+- name: extract the passenger tars
+  unarchive:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 'u=rwX,g=rX,o=rX'
+    remote_src: yes
+  become: true
+  loop:
+  - { src: "{{ passenger_src_dir }}/{{ passenger_tar }}", dest: "{{ ood_base_dir }}" }
+  - { src: "{{ passenger_src_dir }}/{{ agent_tar }}", dest: "{{ passenger_support_binaries_dir }}" }
+  - { src: "{{ passenger_src_dir }}/{{ nginx_tar }}", dest: "{{ nginx_dir }}/bin" }
+
+- name: copy nginx mime types files
+  copy:
+    src: "mime.types"
+    dest: "{{ nginx_dir }}/conf"
+    mode: 'u=rw,g=r,o=r'
+  become: true
+
+- name: symlink passenger directory and nginx binary
+  file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    force: yes
+    state: link
+  become: true
+  loop:
+  - { src: "{{ nginx_dir }}/bin/nginx-{{ nginx_version }}", dest: "{{ nginx_dir }}/bin/nginx" }
+  - { src: "{{ ood_base_dir }}/passenger-{{ passenger_version }}", dest: "{{ passenger_base_dir }}" }
+
+- name: make nginx config dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 'u=rwx,g=rx,o=rx'
+  become: true
+  loop:
+  - "{{ nginx_lib_dir }}"
+  - "{{ nginx_config_dir }}"
+  - "{{ nginx_puns_dir }}"
+  - "{{ nginx_apps_dir }}"
+  - "{{ nginx_apps_dir }}/sys"
+  - "{{ nginx_apps_dir }}/usr"
+  - "{{ nginx_apps_dir }}/dev"
+
+- name: make a tmp dir
+  shell: mktemp -d
+  register: tmpdir
+
+- name: make passenger_native_support.so Makefile
+  shell: ruby {{ passenger_base_dir }}/src/ruby_native_extension/extconf.rb
+  args:
+    chdir: "{{ tmpdir.stdout }}"
+  become: true
+
+- name: make the passenger_native_support.so
+  make:
+    chdir: "{{ tmpdir.stdout }}"
+  become: true
+
+- name: move passenger_native_support.so to support libraries
+  copy:
+    src: "{{ tmpdir.stdout }}/passenger_native_support.so"
+    dest:  "{{ ruby_lib_dir }}/passenger_native_support.so"
+    owner: root
+    group: root
+    mode: 'u=rwx,g=rx,o=rx'
+    remote_src: yes
+  become: true
+
+- name: cleanup tmp dir
+  file:
+    path: "{{ tmpdir.stdout }}"
+    state: absent

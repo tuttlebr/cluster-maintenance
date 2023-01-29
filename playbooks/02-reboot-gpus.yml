@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Reboot compute nodes
+      reboot:
+        reboot_timeout: 3600
+        post_reboot_delay: 60
+      when: ansible_hostname in groups['gpu']

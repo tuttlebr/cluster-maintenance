@@ -1,0 +1,44 @@
+- name: include distribution variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}/{{ ansible_distribution_major_version}}.yml"
+    - "{{ ansible_distribution }}.yml"
+  tags: [ 'always' ]
+
+- name: include scl related overrides
+  include_vars: "{{ ansible_distribution }}-scl.yml"
+  when: (not install_from_src) and (ansible_os_family == "RedHat" and ansible_distribution_major_version < '8')
+  tags: [ 'always' ]
+
+- include: deps.yml
+  become: true
+  tags: [ 'deps' ]
+  when: install_from_src
+
+- include: build.yml
+  tags: [ 'build' ]
+  when: install_from_src
+
+- include: install-src.yml
+  become: true
+  tags: [ 'install' ]
+  when: install_from_src
+
+- include: install-rpm.yml
+  become: true
+  tags: [ 'install' ]
+  when: not install_from_src
+
+- include: configure.yml
+  become: true
+  tags: [ 'configure' ]
+
+- include: install-apps.yml
+  when: ood_install_apps is defined
+  become: true
+  tags: [ 'install' ]
+
+- include: apps.yml
+  when: ood_apps is defined
+  become: true
+  tags: [ 'configure' ]
