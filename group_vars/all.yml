@@ -8,7 +8,9 @@ necessary_software:
   - firewalld
   - sshpass
   
-unnecessary_software: []
+unnecessary_software: 
+  - speedtest
+  - ubuntu-standard
   
 unnecessary_services: []
 

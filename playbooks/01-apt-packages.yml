@@ -1,25 +1,31 @@
 - hosts: all
   become: true
   tasks:
-    - name: Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+    - name: Only run cleanup if > 3600 seconds ago
       ansible.builtin.apt:
-        update_cache: yes
+        update_cache: true
         cache_valid_time: 3600
-        autoremove: yes
-        autoclean: yes
-        purge: yes
-
-    - name: Install necessary software
-      package:
-        name: "{{ necessary_software }}"
-        state: present
+        autoremove: true
+        autoclean: true
+        purge: true
+        install_recommends: false
 
     - name: Remove unnecessary software
       package:
         name: "{{ unnecessary_software }}"
         state: absent
         purge: true
+        autoremove: true
+        autoclean: true
       ignore_errors: true
+
+    - name: Install necessary software
+      package:
+        name: "{{ necessary_software }}"
+        state: present
+        autoremove: true
+        autoclean: true
+        install_recommends: false
 
     - name: Stop and disable unnecessary services
       service:
