@@ -6,6 +6,7 @@ allowed_ssh_networks:
 
 necessary_software:
   - firewalld
+  - sshpass
   
 unnecessary_software: []
   

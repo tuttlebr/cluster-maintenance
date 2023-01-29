@@ -39,3 +39,7 @@ roles:
 
 - src: gantsign.golang
   version: 2.4.0
+
+- src: https://github.com/DeepOps/ansible-role-hosts.git
+  version: 'c21a676088c07db3db3ac9332cf584eeb068e3fd'
+  name: DeepOps.hosts
