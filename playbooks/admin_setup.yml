@@ -1,0 +1,131 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Only run cleanup if > 3600 seconds ago
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+        autoremove: true
+        autoclean: true
+        purge: true
+        install_recommends: false
+
+    - name: Remove unnecessary software
+      package:
+        name: "{{ unnecessary_software }}"
+        state: absent
+        purge: true
+        autoremove: true
+        autoclean: true
+      ignore_errors: true
+
+    - name: Install necessary software
+      package:
+        name: "{{ necessary_software }}"
+        state: present
+        autoremove: true
+        autoclean: true
+        install_recommends: false
+
+    - name: Stop and disable unnecessary services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ unnecessary_services }}"
+      ignore_errors: true
+
+    - name: Set a message of the day
+      template:
+        dest: /etc/motd
+        src: templates/motd.j2
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Set a login banner
+      template:
+        dest: "{{ item }}"
+        src: templates/issue.j2
+        owner: root
+        group: root
+        mode: 0644
+      with_items:
+        - /etc/issue
+        - /etc/issue.net
+
+    - name: Remove other motds
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items: "{{ unnecessary_motd }}"
+
+    - name: Add "{{ admin_user }}" group
+      group:
+        name: "{{ admin_user }}"
+        state: present
+
+    - name: Add local user if not present
+      user:
+        name: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        shell: /bin/bash
+        home: /home/"{{ admin_user }}"
+        create_home: yes
+        state: present
+      ignore_errors: true
+
+    - name: Add SSH public key for user
+      authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        state: present
+
+    - name: Add sudoer rule for local user
+      template:
+        dest: /etc/sudoers.d/{{ admin_user }}
+        src: templates/admin_user.j2
+        owner: root
+        group: root
+        mode: 0440
+        validate: /usr/sbin/visudo -csf %s
+
+    - name: Add hardened SSH config
+      template:
+        dest: /etc/ssh/sshd_config
+        src: ./templates/sshd_config.j2
+        owner: root
+        group: root
+        mode: 0600
+      notify: Reload SSH
+
+    - name: Set authorized key defining key options
+      ansible.posix.authorized_key:
+        user: "{{ admin_user }}"
+        state: present
+        key: "{{ item }}"
+      loop: "{{ authorized_keys}}"
+
+    - name: Add lines to fstab
+      ansible.posix.mount:
+        src: "{{ item.src }}"
+        path: "{{ item.path }}"
+        opts: "{{ item.opts }}"
+        state: "{{ item.state }}"
+        fstype: "{{ item.fstype }}"
+      with_items: "{{ fstab_mounts }}"
+
+  handlers:
+    - name: Reload SSH
+      service:
+        name: sshd
+        state: reloaded
+
+- import_playbook: bootstrap/bootstrap-ssh.yml
+
+- import_playbook: bootstrap/bootstrap-sudo.yml
+
+- import_playbook: generic/chrony-client.yml
+
+- import_playbook: generic/hosts.yml

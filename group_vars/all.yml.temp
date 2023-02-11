@@ -1,0 +1,23 @@
+admin_user: "ubuntu"
+
+authorized_keys: []
+
+necessary_software:
+  - sshpass
+  
+unnecessary_software: 
+  - unattended-upgrades
+  
+unnecessary_services: []
+
+unnecessary_motd:
+  - /etc/update-motd.d/00-header
+  - /etc/update-motd.d/10-help-text
+  - /etc/update-motd.d/50-motd-news
+
+fstab_mounts:
+  - src: 
+    path: 
+    opts: 
+    state: 
+    fstype: 

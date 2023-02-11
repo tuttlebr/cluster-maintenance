@@ -1,1 +1,4 @@
-install_pip.yml
+- name: install supervisord
+  pip:
+    name: supervisor<4.0.0  # supervisor version 4.0.0 fails tests
+    state: present

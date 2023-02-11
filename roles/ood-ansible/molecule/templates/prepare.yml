@@ -1,1 +1,7 @@
-../default/prepare.yml
+- name: Prepare
+  hosts: all
+  
+  tasks:
+    - package:
+        name: ca-certificates
+        state: latest
