@@ -1,0 +1,67 @@
+---
+- hosts: gpu
+  become: true
+  tasks:
+    - name: Purge if requested
+      block:
+        - name: do purge
+          apt:
+            name: "{{ item }}"
+            state: absent
+            purge: true
+            autoremove: true
+          loop:
+            - nvidia-*
+            - cuda
+            - libnvidia-*
+      when: purge == true
+
+    - name: Install CUDA using debian local installer
+      block:
+        - name: Stat cuda pin file
+          stat:
+            path: /etc/apt/preferences.d/cuda-repository-pin-600
+          register: pin_file
+
+        - name: Stat cuda gpg file
+          stat:
+            path: /usr/share/keyrings/cuda-archive-keyring.gpg
+          register: gpg_file
+
+        - name: add cuda gpg key
+          get_url:
+            url: https://developer.download.nvidia.com/compute/cuda/repos/{{ distro }}/{{ arch }}/cuda-{{ distro }}-keyring.gpg
+            dest: /usr/share/keyrings/cuda-archive-keyring.gpg
+          when: gpg_file.stat.exists == false
+
+        - name: add cuda repo
+          apt_repository:
+            repo: "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/{{ distro }}/{{ arch }}/ /"
+            state: present
+
+        - name: download pin file
+          get_url:
+            url: https://developer.download.nvidia.com/compute/cuda/repos/{{ distro }}/{{ arch }}/cuda-{{ distro }}.pin
+            dest: /etc/apt/preferences.d/cuda-repository-pin-600/cuda-{{ distro }}.pin
+          when: pin_file.stat.exists == false
+
+        - name: install libs
+          apt:
+            name: "{{ item }}"
+            state: present
+            update_cache: true
+          loop:
+            - cuda
+            - libnccl2
+            - libnccl-dev
+          register: debian_cuda_installed
+
+        - name: update CMAKE_CUDA_COMPILER variable
+          lineinfile:
+            path: /etc/environment
+            line: 'CMAKE_CUDA_COMPILER="/usr/local/cuda-12.0/bin/nvcc"'
+          register: compiler_env
+
+        - name: reboot if needed
+          reboot:
+          when: purge == true
