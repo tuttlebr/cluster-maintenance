@@ -1,0 +1,19 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Download GO tarball
+      get_url:
+        url: https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
+        checksum: sha256:000a5b1fca4f75895f78befeb2eecf10bfff3c428597f3f1e69133b63b911b02
+        dest: /tmp/go1.20.1.linux-amd64.tar.gz
+
+    - name: Extract GO tarball
+      ansible.builtin.unarchive:
+        src: /tmp/go1.20.1.linux-amd64.tar.gz
+        dest: /usr/local
+
+    - name: Update admin user bashrc
+      lineinfile:
+        dest: "/home/{{ admin_user }}/.bashrc"
+        line: "export PATH=$PATH:/usr/local/go/bin"

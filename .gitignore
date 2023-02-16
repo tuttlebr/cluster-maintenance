@@ -1,2 +1,6 @@
 installed-packages.txt
 all.yml
+*.crt
+*.key
+htpasswd
+*.cnf

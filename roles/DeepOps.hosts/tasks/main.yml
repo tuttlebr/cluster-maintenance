@@ -37,12 +37,12 @@
   tags: hosts
   when: (hosts_file_src is not defined) and (hosts_entries|length>0)
 
-- name: Add Managed Block to {{ hosts_file }}
-  blockinfile:
-    path: "{{ hosts_file }}"
-    owner: root
-    group: root
-    content: "{{ custom_hosts }}"
-    marker: "# {{ hosts_custom_hosts_marker }} {mark}"
-  tags: hosts
-  when: (hosts_file_src is not defined) and (hosts_entries|length>0)
+# - name: Add Managed Block to {{ hosts_file }}
+#   blockinfile:
+#     path: "{{ hosts_file }}"
+#     owner: root
+#     group: root
+#     content: "{{ custom_hosts }}"
+#     marker: "# {{ hosts_custom_hosts_marker }} {mark}"
+#   tags: hosts
+#   when: (hosts_file_src is not defined) and (hosts_entries|length>0)

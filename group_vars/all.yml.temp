@@ -4,6 +4,7 @@ authorized_keys: []
 
 necessary_software:
   - sshpass
+  - jq
   
 unnecessary_software: 
   - unattended-upgrades

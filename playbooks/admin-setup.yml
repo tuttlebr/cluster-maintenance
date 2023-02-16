@@ -2,31 +2,13 @@
 - hosts: all
   become: true
   tasks:
-    - name: Only run cleanup if > 3600 seconds ago
-      ansible.builtin.apt:
-        update_cache: true
-        cache_valid_time: 3600
-        autoremove: true
-        autoclean: true
-        purge: true
-        install_recommends: false
 
-    - name: Remove unnecessary software
-      package:
-        name: "{{ unnecessary_software }}"
-        state: absent
-        purge: true
-        autoremove: true
-        autoclean: true
-      ignore_errors: true
-
-    - name: Install necessary software
-      package:
-        name: "{{ necessary_software }}"
-        state: present
-        autoremove: true
-        autoclean: true
-        install_recommends: false
+    - name: Start and enable necessary services
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      with_items: "{{ necessary_services }}"
 
     - name: Stop and disable unnecessary services
       service:
@@ -34,6 +16,30 @@
         state: stopped
         enabled: no
       with_items: "{{ unnecessary_services }}"
+      ignore_errors: true
+
+    - name: Only run apt update if > 3600 seconds ago
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Remove unnecessary software
+      package:
+        name: "{{ unnecessary_software }}"
+        state: absent
+        purge: true
+      ignore_errors: true
+
+    - name: Install necessary software
+      package:
+        name: "{{ necessary_software }}"
+        state: present
+        install_recommends: false
+
+    - name: Apt autoremove and autoclean
+      package:
+        autoremove: true
+        autoclean: true
       ignore_errors: true
 
     - name: Set a message of the day
@@ -116,6 +122,17 @@
         fstype: "{{ item.fstype }}"
       with_items: "{{ fstab_mounts }}"
 
+    - name: Bootstrap docker directory
+      file:
+        path: /etc/docker/certs.d/discovery.local:31500
+        state: directory
+
+    - name: Set local docker ca.crt
+      file:
+        src: /volume1/brandon/docker-registry/certs/discovery.crt
+        dest: /etc/docker/certs.d/discovery.local:31500/ca.crt
+        state: link
+        
   handlers:
     - name: Reload SSH
       service:
