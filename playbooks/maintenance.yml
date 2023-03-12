@@ -1,0 +1,14 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Only run apt update if > 3600 seconds ago
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Apt autoremove and autoclean
+      package:
+        autoremove: true
+        autoclean: true
+      ignore_errors: true

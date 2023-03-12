@@ -14,46 +14,45 @@
             - nvidia-*
             - cuda
             - libnvidia-*
+            - xserver-xorg-*
       when: purge == true
 
-    - name: Install CUDA using debian local installer
+    - name: Install NVIDIA stuff
       block:
-        - name: Stat cuda pin file
-          stat:
-            path: /etc/apt/preferences.d/cuda-repository-pin-600
-          register: pin_file
 
-        - name: Stat cuda gpg file
-          stat:
-            path: /usr/share/keyrings/cuda-archive-keyring.gpg
-          register: gpg_file
-
-        - name: add cuda gpg key
-          get_url:
-            url: https://developer.download.nvidia.com/compute/cuda/repos/{{ distro }}/{{ arch }}/cuda-{{ distro }}-keyring.gpg
-            dest: /usr/share/keyrings/cuda-archive-keyring.gpg
-          when: gpg_file.stat.exists == false
-
-        - name: add cuda repo
-          apt_repository:
-            repo: "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/{{ distro }}/{{ arch }}/ /"
+        - name: add nvidia-container-runtime gpg key
+          apt_key:
+            url: https://nvidia.github.io/nvidia-container-runtime/gpgkey
             state: present
 
-        - name: download pin file
-          get_url:
-            url: https://developer.download.nvidia.com/compute/cuda/repos/{{ distro }}/{{ arch }}/cuda-{{ distro }}.pin
-            dest: /etc/apt/preferences.d/cuda-repository-pin-600/cuda-{{ distro }}.pin
-          when: pin_file.stat.exists == false
+        - name: ncr add apt source
+          lineinfile:
+            path: /etc/apt/sources.list.d/nvidia-container-runtime.list
+            line: "{{ item }}"
+            state: present
+            create: true
+          loop:
+            - "deb https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/$(ARCH) /"
+            - "deb https://nvidia.github.io/nvidia-container-runtime/stable/ubuntu18.04/$(ARCH) /"
+
+        - name: update docker runtime entry
+          blockinfile:
+            path: /etc/systemd/system/docker.service.d/override.conf
+            block: |
+              [Service]
+              ExecStart=
+              ExecStart=/usr/bin/dockerd --host=fd:// --add-runtime=nvidia=/usr/bin/nvidia-container-runtime
+            state: present
+            create: true
 
         - name: install libs
           apt:
             name: "{{ item }}"
-            state: present
+            state: latest
             update_cache: true
           loop:
-            - cuda
-            - libnccl2
-            - libnccl-dev
+            - nvidia-driver-525-server
+            - nvidia-container-runtime
           register: debian_cuda_installed
 
         - name: update CMAKE_CUDA_COMPILER variable
@@ -61,6 +60,12 @@
             path: /etc/environment
             line: 'CMAKE_CUDA_COMPILER="/usr/local/cuda-12.0/bin/nvcc"'
           register: compiler_env
+
+        - name: restart docker
+          systemd:
+            state: restarted
+            name: docker
+            daemon_reload: true
 
         - name: reboot if needed
           reboot:

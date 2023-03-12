@@ -42,6 +42,14 @@
         autoclean: true
       ignore_errors: true
 
+    - name: set bashrc
+      template:
+        dest: "/home/{{ admin_user }}/.bashrc"
+        src: templates/bashrc.j2
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: 0644
+
     - name: Set a message of the day
       template:
         dest: /etc/motd

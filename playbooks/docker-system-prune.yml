@@ -3,14 +3,7 @@
   become: true
   tasks:
     - name: Prune everything (including non-dangling images)
-      community.docker.docker_prune:
-        containers: true
-        images: true
-        images_filters:
-          dangling: false
-        networks: true
-        volumes: true
-        builder_cache: true
+      command: docker system prune -f -a
       ignore_errors: true
       register: docker_info
 
