@@ -2,13 +2,57 @@
 - hosts: all
   become: true
   tasks:
-    - name: Only run apt update if > 3600 seconds ago
-      ansible.builtin.apt:
+    - name: Update and upgrade installed packages
+      apt:
+        name: "*"
+        state: latest
         update_cache: true
-        cache_valid_time: 3600
-
-    - name: Apt autoremove and autoclean
-      package:
         autoremove: true
         autoclean: true
+        cache_valid_time: 3600
+
+    - name: Register nvidia-smi output
+      command: nvidia-smi --query-gpu=gpu_name,gpu_bus_id,driver_version --format=csv
+      when: ansible_hostname in groups["gpu"]
+      register: gpu_info
+      ignore_errors: true
+
+    - name: Is the docker daemon running?
+      ansible.builtin.systemd:
+        state: started
+        name: docker
+        enabled: true
+        daemon_reload: true
+
+    - name: Prune everything (including non-dangling images)
+      command: docker system prune -f -a
+      ignore_errors: true
+      register: docker_info
+
+    - name: Print docker prune info
+      ansible.builtin.debug:
+        var: docker_info
+        
+- hosts: all
+  become: true
+  vars_prompt:
+    - name: "reboot_confirmation"
+      prompt: "Reboot nodes with NVML mismatch? Type 'yes' to confirm reboot. (Reboot takes about 5 minutes.)"
+      default: "no"
+      private: false
+
+  pre_tasks:
+    - name: check confirmation
+      fail:
+        msg: "Reboot will not be done."
+      when: reboot_confirmation != "yes"
+
+    - name: Reboot gpu nodes
+      reboot:
+        msg: "NVML error reboot initiated by Ansible."
+      when: ansible_hostname in groups["gpu"] and gpu_info.rc != 0 and reboot_confirmation == "yes"
+
+    - name: Register nvidia-smi output after reboot
+      command: nvidia-smi --query-gpu=gpu_name,gpu_bus_id,driver_version --format=csv
+      when: ansible_hostname in groups["gpu"] and gpu_info.rc != 0 and reboot_confirmation == "yes"
       ignore_errors: true

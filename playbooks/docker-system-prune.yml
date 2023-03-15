@@ -2,6 +2,13 @@
 - hosts: all
   become: true
   tasks:
+    - name: Is the docker daemon running?
+      ansible.builtin.systemd:
+        state: started
+        name: docker
+        enabled: true
+        daemon_reload: true
+
     - name: Prune everything (including non-dangling images)
       command: docker system prune -f -a
       ignore_errors: true

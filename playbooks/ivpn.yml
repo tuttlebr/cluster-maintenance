@@ -1,0 +1,61 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Update and upgrade installed packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+        autoremove: true
+        autoclean: true
+        cache_valid_time: 3600
+      loop:
+        - curl
+        - resolvconf
+        - wireguard
+
+    - name: Install IVPN daemon and CLI deb
+      apt:
+        deb: https://repo.ivpn.net/stable/pool/ivpn_3.10.14_amd64.deb
+
+    - name: Create wireguard dir
+      file:
+        path: /etc/wireguard
+        state: directory
+
+    - name: Generate wg keys
+      shell: wg genkey | tee /home/{{ admin_user }}/.ssh/wg_privatekey | wg pubkey > /home/{{ admin_user }}/.ssh/wg_publickey
+
+    - name: Register privatekey
+      shell: "cat /home/{{ admin_user }}/.ssh/wg_privatekey"
+      register: interface_private_key
+
+    - name: Register publickey
+      shell: "cat /home/{{ admin_user }}/.ssh/wg_publickey"
+      register: interface_public_key
+
+    - name: chmod wg_pubkey
+      file:
+        path: /home/{{ admin_user }}/.ssh/wg_publickey
+        mode: "644"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+
+    - name: chmod wg_privatekey
+      file:
+        path: /home/{{ admin_user }}/.ssh/wg_privatekey
+        mode: "600"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+
+    - name: Generate wireguard conf file
+      template:
+        dest: "/etc/wireguard/{{ wg_config_name }}.conf"
+        src: templates/wireguard.conf.j2
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: 600
+
+    - name: Please manually add pubkeys on ivpn.net/account/wireguard
+      debug: var=interface_public_key.stdout
