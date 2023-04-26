@@ -18,6 +18,7 @@
     - name: Install IVPN daemon and CLI deb
       apt:
         deb: https://repo.ivpn.net/stable/pool/ivpn_3.10.14_amd64.deb
+      when: ansible_hostname in groups["amd64"]
 
     - name: Create wireguard dir
       file:

@@ -2,6 +2,19 @@
 - hosts: all
   become: true
   tasks:
+    - name: Register kernel header version
+      command: uname -r
+      register: kernel_info
+
+    - name: Update kernel header version
+      apt:
+        name: "linux-headers-{{ kernel_info.stdout }}"
+        state: latest
+        update_cache: true
+        autoremove: true
+        autoclean: true
+        install_recommends: false
+
     - name: Update and upgrade installed packages
       apt:
         name: "*"
@@ -9,6 +22,7 @@
         update_cache: true
         autoremove: true
         autoclean: true
+        install_recommends: false
         cache_valid_time: 3600
 
     - name: Register nvidia-smi output
@@ -47,10 +61,15 @@
         msg: "Reboot will not be done."
       when: reboot_confirmation != "yes"
 
+    - name: Check if reboot required
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required_file
+
     - name: Reboot gpu nodes
       reboot:
         msg: "NVML error reboot initiated by Ansible."
-      when: ansible_hostname in groups["gpu"] and gpu_info.rc != 0 and reboot_confirmation == "yes"
+      when: ansible_hostname in groups["gpu"] and (gpu_info.rc != 0 or reboot_required_file.stat.exists == true) and reboot_confirmation == "yes"
 
     - name: Register nvidia-smi output after reboot
       command: nvidia-smi --query-gpu=gpu_name,gpu_bus_id,driver_version --format=csv
