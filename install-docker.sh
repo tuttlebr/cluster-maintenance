@@ -1,6 +1,9 @@
 #!/bin/bash
 sudo apt-get update
 
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras
+
 sudo apt-get install -y \
     ca-certificates \
     curl \
@@ -21,6 +24,4 @@ sudo apt-get update
 
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 
-sudo usermod -aG docker $USER
-
-newgrp docker
+sudo usermod -aG docker brandon

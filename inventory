@@ -2,13 +2,9 @@
 daedalus-01  ansible_host=192.168.1.234
 daedalus-02  ansible_host=192.168.1.235
 daedalus-03  ansible_host=192.168.1.236
-; jetson-01   ansible_host=192.168.1.26
 
 [cpu]
 daedalus-01
-
-[jetson]
-; jetson-01
 
 [amd64]
 daedalus-01
@@ -16,7 +12,6 @@ daedalus-02
 daedalus-03
 
 [arm]
-; jetson-01
 
 [gpu]
 daedalus-02

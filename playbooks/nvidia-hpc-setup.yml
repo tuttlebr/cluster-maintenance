@@ -2,22 +2,7 @@
 - hosts: gpu
   become: true
   tasks:
-    - name: Purge if requested
-      block:
-        - name: do purge
-          apt:
-            name: "{{ item }}"
-            state: absent
-            purge: true
-            autoremove: true
-          loop:
-            - nvidia-*
-            - cuda
-            - libnvidia-*
-            - xserver-xorg-*
-      when: purge == true
-
-    - name: Install NVIDIA components
+    - name: Install NVIDIA Container Runtime
       block:
         - name: add nvidia-container-runtime gpg key
           apt_key:
@@ -31,8 +16,8 @@
             state: present
             create: true
           loop:
-            - "deb https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/$(ARCH) /"
-            - "deb https://nvidia.github.io/nvidia-container-runtime/stable/ubuntu18.04/$(ARCH) /"
+            - "deb https://nvidia.github.io/libnvidia-container/stable/ubuntu20.04/$(ARCH) /"
+            - "deb https://nvidia.github.io/nvidia-container-runtime/stable/ubuntu20.04/$(ARCH) /"
 
         - name: update docker runtime entry
           blockinfile:
@@ -44,41 +29,23 @@
             state: present
             create: true
 
-        - name: Register kernel header version
-          command: uname -r
-          register: kernel_info
-
-        - name: Update kernel header version
-          apt:
-            name: "linux-headers-{{ kernel_info.stdout }}"
-            state: latest
-            update_cache: true
-            autoremove: true
-            autoclean: true
-            install_recommends: true
-
         - name: install libs
           apt:
             name: "{{ item }}"
             state: present
             update_cache: true
           loop:
-            - nvidia-driver-525-server
             - nvidia-container-runtime
           register: debian_cuda_installed
 
-        - name: update CMAKE_CUDA_COMPILER variable
-          lineinfile:
-            path: /etc/environment
-            line: 'CMAKE_CUDA_COMPILER="/usr/local/cuda-12.0/bin/nvcc"'
-          register: compiler_env
-
-        - name: restart docker
+        - name: Stop Docker
           systemd:
-            state: restarted
+            state: stopped
             name: docker
-            daemon_reload: true
 
-        - name: reboot if needed
-          reboot:
-          when: purge == true
+        - name: Start Docker
+          systemd:
+            state: started
+            name: docker
+            enabled: true
+            daemon_reload: true

@@ -27,4 +27,5 @@ do
 done
 
 echo "Docker cert creation completed."
-echo "Restart the docker registry server to pick up new credentials."
+echo "RESET the docker registry server at ${NAME}.local:31500 to pick up new credentials."
+echo "You may also need to add the registry server as an insecure-registry at /lib/systemd/system/docker.service"

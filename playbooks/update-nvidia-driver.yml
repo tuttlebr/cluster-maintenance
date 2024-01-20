@@ -1,0 +1,64 @@
+---
+- hosts: gpu
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Check if update needed
+      block:
+        - name: Gather current NVIDIA driver version
+          command: nvidia-smi --query-gpu=driver_version --format=csv,noheader
+          register: current_driver_version
+
+      rescue:
+        - name: try to fix dpkg errors
+          command: dpkg --configure -a
+
+        - name: try to fix apt errors
+          command: apt install --fix-broken
+
+        - name: Force driver install
+          command: echo "0.0.0"
+          register: current_driver_version
+
+    - name: Conditionally install new NVIDIA driver version
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: true
+            autoremove: true
+            autoclean: true
+
+        - name: Remove NVIDIA driver version conflicts
+          apt:
+            name: "{{ item }}"
+            state: absent
+            purge: true
+            autoremove: true
+          loop:
+            - nvidia-*
+            - cuda
+            - libnvidia-*
+            - xserver-xorg-*
+
+        - name: Install nvidia-driver-{{ target_driver_branch }}-server
+          apt:
+            name: "nvidia-driver-{{ target_driver_branch }}-server"
+            state: present
+            autoremove: true
+            autoclean: true
+            update_cache: false
+
+        - name: Reboot after nodes installation
+          reboot:
+            reboot_timeout: 600
+
+        - name: Gather new NVIDIA driver version
+          command: nvidia-smi --query-gpu=driver_version --format=csv,noheader
+          register: new_driver_version
+
+        - name: Output new NVIDIA driver version
+          ansible.builtin.debug:
+            var: new_driver_version.stdout_lines[0].split('.')[0]
+
+      when: target_driver_branch != current_driver_version.stdout_lines[0].split('.')[0] | int
