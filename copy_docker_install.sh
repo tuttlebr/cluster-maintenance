@@ -1,5 +1,5 @@
 #!/bin/bash
-REMOTE_HOSTS="daedalus-02 daedalus-03"
+REMOTE_HOSTS="daedalus-02"
 clear
 for REMOTE_HOST in ${REMOTE_HOSTS};
 do 

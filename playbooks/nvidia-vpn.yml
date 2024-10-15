@@ -1,0 +1,60 @@
+---
+- hosts: cpu
+  become: true
+  tasks:
+    - name: Install OpenConnect
+      block:
+        - name: add apt key
+          ansible.builtin.get_url:
+            url: https://download.opensuse.org/repositories/home:bluca:openconnect:release/Ubuntu_22.04/Release.key
+            dest: /etc/apt/trusted.gpg.d/home_bluca_openconnect_release.asc
+
+        - name: apt update
+          ansible.builtin.apt:
+            update_cache: true
+
+        - name: add openconnect apt source
+          lineinfile:
+            path: /etc/apt/sources.list.d/home:bluca:openconnect:release.list
+            line: "{{ item }}"
+            state: present
+            create: true
+          loop:
+            - "deb http://download.opensuse.org/repositories/home:/bluca:/openconnect:/release/Ubuntu_22.04/ /"
+
+        - name: add nvidia search domains
+          lineinfile:
+            path: /etc/resolv.conf
+            line: "{{ item }}"
+            state: present
+            create: true
+          loop:
+            - "search nvidia.com"
+            - "search nvprod.nvidia.com"
+            - "search nvclient.nvidia.com"
+            - "search client.nvidia.com"
+
+        - name: Install nvidia vpn software
+          package:
+            name: "{{ nvidia_vpn_software }}"
+            state: present
+            install_recommends: true
+
+    - name: capture existing vpn process id
+      command: pgrep openconnect
+      register: running_vpn
+      ignore_errors: true
+
+    - name: kill existing vpn if present
+      command: "kill -9 {{ running_vpn.stdout }}"
+      ignore_errors: true
+
+    - name: Start vpn
+      command: "openconnect --background --cookie-on-stdin {{ nv_connect_url }}"
+      register: launching_vpn
+      args:
+        stdin: "{{ nv_cookie }}"
+    
+    - name: Print openconnect info
+      ansible.builtin.debug:
+        var: launching_vpn.stdout

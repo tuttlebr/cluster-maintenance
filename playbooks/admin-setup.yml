@@ -55,6 +55,7 @@
         name: resolvconf
         enabled: true
         daemon_reload: true
+      ignore_errors: true
 
     - name: Restart systemd-resolved
       systemd:
@@ -148,6 +149,7 @@
       copy:
         src: /volume1/brandon/docker-registry/certs/discovery.crt
         dest: /etc/docker/certs.d/discovery.local:31500/ca.crt
+      ignore_errors: true
         
   handlers:
     - name: Reload SSH

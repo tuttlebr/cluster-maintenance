@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for ERROR_TYPE in CrashLoopBackOff Pending Error Terminating;
+for ERROR_TYPE in Evicted ContainerCreating CrashLoopBackOff Pending Error Terminating NodeAffinity Unknown Init:ContainerStatusUnknown;
 do
   kubectl get pods --all-namespaces | grep ${ERROR_TYPE} | while read line; do
     pod_name=$(echo $line | awk '{print $2}' ) \
