@@ -1,5 +1,5 @@
 ---
-- hosts: gpu
+- hosts: compute
   become: true
   tasks:
     - name: Unconditionally reboot the machine with all defaults

@@ -31,7 +31,7 @@
         daemon_reload: true
 
     - name: Prune dangling docker images
-      command: docker system prune -f
+      command: docker system prune -f -a
       ignore_errors: true
       register: docker_image_prune
 
@@ -47,8 +47,9 @@
     - name: Print docker network prune info
       ansible.builtin.debug:
         var: docker_network_prune.stdout_lines
-        
+
     - name: Is the containerd daemon running?
+      when: ansible_hostname in groups["kubernetes"]
       ansible.builtin.systemd:
         state: started
         name: containerd
@@ -56,10 +57,12 @@
         daemon_reload: true
 
     - name: Prune dangling containerd images
+      when: ansible_hostname in groups["kubernetes"]
       command: nerdctl --namespace k8s.io system prune -f -a
       ignore_errors: true
       register: containerd_image_prune
 
     - name: Print containerd image prune info
+      when: ansible_hostname in groups["kubernetes"]
       ansible.builtin.debug:
         var: containerd_image_prune.stdout_lines
